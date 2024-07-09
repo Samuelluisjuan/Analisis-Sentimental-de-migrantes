@@ -1,61 +1,54 @@
 import pandas as pd
-import tweepy 
+import tweepy
+import time
 
 # Configuración de la API de Twitter (asegúrate de tener tus propias claves)
-# Estas claves se obtienen al crear una aplicación en el portal de desarrolladores de Twitter
-api_key = "TU_API_KEY"
-api_secret_key = "TU_API_SECRET_KEY"
-access_token = "TU_ACCESS_TOKEN"
-access_token_secret = "TU_ACCESS_TOKEN_SECRET"
+api_key = "t1TmTGZfCfebvaseP7Wz4yUP3"
+api_secret_key = "KNZ6KfPRvGzQsEQ5JF4JRF91orVCx8rasCbTBlQjhPYDBIaxBl"
+bearer_token = "AAAAAAAAAAAAAAAAAAAAAHX5ugEAAAAAO%2B6Tbx1WdlxdeOjz3rPiE%2BuZTaQ%3DibH5C0VfuLxMs8mGfULfzVR6SsRZH0zHeVEunNnHkGYnE9F1H3"
 
 # Autenticación con la API de Twitter
-auth = tweepy.OAuthHandler(api_key, api_secret_key)
-auth.set_access_token(access_token, access_token_secret)
-api = tweepy.API(auth, wait_on_rate_limit=True)
+client = tweepy.Client(bearer_token=bearer_token, wait_on_rate_limit=True)
 
 # Léxico de palabras clave refinado y ampliado
-# Este léxico contiene palabras y frases comunes en tweets sobre migrantes,
-# incluyendo términos relacionados con estatus migratorio, emociones, condiciones del viaje, y más.
-lexicon = [
-    "asilo", "refugio", "inmigrante", "migrante", "exiliado", "desplazado", 
-    "documentos", "visa", "deportación", "regularización", "residencia", 
-    "permiso", "solicitud de asilo", "miedo", "esperanza", "tristeza", "alegría", 
-    "desesperación", "frustración", "nostalgia", "alivio", "ansiedad", "angustia", 
-    "preocupación", "optimismo", "incertidumbre", "gratitud", "cruce", "frontera", 
-    "travesía", "camino", "trayecto", "ruta", "viaje", "desierto", "mar", 
-    "caravana", "paso", "coyotes", "rutas peligrosas", "violencia", "persecución", 
-    "abuso", "detención", "secuestro", "extorsión", "discriminación", "xenofobia", 
-    "racismo", "protección", "inseguridad", "amenazas", "peligro", "familia", 
-    "hijos", "padres", "reunificación", "separación", "reencuentro", "amigo", 
-    "compañero", "comunidad", "apoyo", "seres queridos", "solidaridad", 
-    "redes de apoyo", "albergue", "refugio", "comida", "salud", "educación", 
-    "trabajo", "empleo", "asistencia", "ayuda", "recursos", "apoyo humanitario", 
-    "servicios médicos", "atención psicológica", "México", "Estados Unidos", 
-    "Guatemala", "Honduras", "El Salvador", "Tijuana", "Tapachula", "Chiapas", 
-    "frontera norte", "frontera sur", "albergues en México", "rutas migratorias", 
-    "estaciones migratorias", "buscando una vida mejor", "huyendo de la violencia", 
-    "cruzar la frontera", "en busca de asilo", "esperando la respuesta", 
-    "temor a la deportación", "esperanza de un futuro mejor"
+lexicon_optimizado = [
+    "asilo", "refugio", "inmigrante", "deportación", "residencia", "permiso",
+    "miedo", "esperanza", "tristeza", "alegría", "frustración", "alivio", "ansiedad", "gratitud",
+    "cruce", "frontera", "travesía", "ruta", "caravana", "coyotes", "rutas peligrosas",
+    "violencia", "detención", "extorsión", "discriminación", "inseguridad", "peligro",
+    "familia", "hijos", "separación", "comunidad", "apoyo", "solidaridad",
+    "albergue", "comida", "salud", "educación", "trabajo", "ayuda", "recursos",
+    "México", "Estados Unidos", "Guatemala", "Tijuana", "Tapachula", "frontera norte", "frontera sur",
+    "buscando una vida mejor", "huyendo de la violencia", "cruzar la frontera", "en busca de asilo"
 ]
 
 # Función para buscar tweets usando el léxico
-# Esta función toma el léxico y busca tweets que contengan cualquiera de las palabras o frases del léxico.
-# Puede especificarse el número máximo de tweets a buscar por palabra clave.
-def search_tweets(lexicon, num_tweets=100):
-    tweets = []
+def search_tweets(lexicon, num_tweets_per_keyword=15):
+    tweets_data = []
     for word in lexicon:
-        for tweet in tweepy.Cursor(api.search_tweets, q=word, lang="es", tweet_mode="extended").items(num_tweets):
-            tweets.append(tweet.full_text)
-    return tweets
+        query = f"{word} lang:es -is:retweet"
+        for tweet in tweepy.Paginator(client.search_recent_tweets, query=query, tweet_fields=['created_at', 'text', 'author_id'], max_results=num_tweets_per_keyword).flatten(limit=num_tweets_per_keyword):
+            tweets_data.append({
+                'keyword': word,
+                'created_at': tweet.created_at,
+                'user_id': tweet.author_id,
+                'text': tweet.text
+            })
+        print(f"Extracted {num_tweets_per_keyword} tweets for keyword: {word}")
+        time.sleep(900)  # Esperar 15 minutos (900 segundos) antes de la siguiente búsqueda
+    return tweets_data
 
 # Buscar tweets
-# Llamar a la función search_tweets con el léxico y especificar cuántos tweets buscar por palabra clave
-tweets = search_tweets(lexicon, num_tweets=50)
+tweets_data = search_tweets(lexicon_optimizado, num_tweets_per_keyword=15)
+
+# Convertir los datos a un DataFrame de pandas
+df_tweets = pd.DataFrame(tweets_data)
+
+# Guardar los tweets en un archivo CSV
+df_tweets.to_csv('tweets_migracion.csv', index=False, encoding='utf-8-sig')
 
 # Mostrar algunos ejemplos de tweets encontrados
-# Imprimir los primeros 10 tweets encontrados para revisión
-for i, tweet in enumerate(tweets[:10]):
-    print(f"{i+1}. {tweet}\n")
+print(df_tweets.head(10))
     
 
     # 1. Incorporar Términos Contextuales y Coloquiales: 
