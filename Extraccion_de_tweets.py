@@ -1,12 +1,16 @@
 import pandas as pd
 import tweepy
+import random
 import time
+
 
 # Configuración de la API de Twitter (asegúrate de tener tus propias claves)
 api_key = "t1TmTGZfCfebvaseP7Wz4yUP3"
 api_secret_key = "KNZ6KfPRvGzQsEQ5JF4JRF91orVCx8rasCbTBlQjhPYDBIaxBl"
 bearer_token = "AAAAAAAAAAAAAAAAAAAAAHX5ugEAAAAAO%2B6Tbx1WdlxdeOjz3rPiE%2BuZTaQ%3DibH5C0VfuLxMs8mGfULfzVR6SsRZH0zHeVEunNnHkGYnE9F1H3"
 
+# Autenticación con la API de Twitter
+client = tweepy.Client(bearer_token=bearer_token, wait_on_rate_limit=True)
 # Autenticación con la API de Twitter
 client = tweepy.Client(bearer_token=bearer_token, wait_on_rate_limit=True)
 
@@ -23,32 +27,42 @@ lexicon_optimizado = [
 ]
 
 # Función para buscar tweets usando el léxico
-def search_tweets(lexicon, num_tweets_per_keyword=15):
+def search_tweets(keywords):
     tweets_data = []
-    for word in lexicon:
+    for word in keywords:
         query = f"{word} lang:es -is:retweet"
-        for tweet in tweepy.Paginator(client.search_recent_tweets, query=query, tweet_fields=['created_at', 'text', 'author_id'], max_results=num_tweets_per_keyword).flatten(limit=num_tweets_per_keyword):
-            tweets_data.append({
-                'keyword': word,
-                'created_at': tweet.created_at,
-                'user_id': tweet.author_id,
-                'text': tweet.text
-            })
-        print(f"Extracted {num_tweets_per_keyword} tweets for keyword: {word}")
-        time.sleep(900)  # Esperar 15 minutos (900 segundos) antes de la siguiente búsqueda
+        try:
+            for tweet in tweepy.Paginator(client.search_recent_tweets, query=query, tweet_fields=['created_at', 'text', 'author_id'], max_results=10).flatten(limit=10):
+                tweets_data.append({
+                    'keyword': word,
+                    'created_at': tweet.created_at,
+                    'user_id': tweet.author_id,
+                    'text': tweet.text
+                })
+            print(f"Extracted tweets for keyword: {word}")
+        except tweepy.TweepyException as e:
+            print(f"Error: {e}")
     return tweets_data
 
-# Buscar tweets
-tweets_data = search_tweets(lexicon_optimizado, num_tweets_per_keyword=15)
-
-# Convertir los datos a un DataFrame de pandas
-df_tweets = pd.DataFrame(tweets_data)
-
-# Guardar los tweets en un archivo CSV
-df_tweets.to_csv('tweets_migracion.csv', index=False, encoding='utf-8-sig')
-
-# Mostrar algunos ejemplos de tweets encontrados
-print(df_tweets.head(10))
+# Bucle para ejecutar la búsqueda de tweets cada 20 minutos
+while True:
+    # Seleccionar 15 palabras clave aleatorias del léxico
+    selected_keywords = random.sample(lexicon_optimizado, 15)
+    
+    # Buscar tweets
+    tweets_data = search_tweets(selected_keywords)
+    
+    # Convertir los datos a un DataFrame de pandas
+    df_tweets = pd.DataFrame(tweets_data)
+    
+    # Guardar los tweets en un archivo CSV
+    df_tweets.to_csv('tweets_migracion.csv', mode='a', header=not pd.io.common.file_exists('tweets_migracion.csv'), index=False, encoding='utf-8-sig')
+    
+    # Mostrar algunos ejemplos de tweets encontrados
+    print(df_tweets.head(10))
+    
+    # Esperar 20 minutos antes de la siguiente ejecución
+    time.sleep(1200)
     
 
     # 1. Incorporar Términos Contextuales y Coloquiales: 
